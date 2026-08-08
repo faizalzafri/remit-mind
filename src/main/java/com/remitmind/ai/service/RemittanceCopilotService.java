@@ -1,0 +1,34 @@
+package com.remitmind.ai.service;
+
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.stereotype.Service;
+
+/**
+ * Core copilot service that orchestrates AI interactions.
+ *
+ * At this stage, the service is stateless: each call is an independent
+ * LLM request with no memory of previous interactions. The system prompt
+ * (set in AiConfig) is sent with every request automatically.
+ */
+@Service
+public class RemittanceCopilotService {
+
+    private final ChatClient chatClient;
+
+    public RemittanceCopilotService(ChatClient chatClient) {
+        this.chatClient = chatClient;
+    }
+
+    /**
+     * Sends a user message to the LLM and returns the response as plain text.
+     * 
+     * @param userMessage the natural language input from the user
+     * @return the model's text response
+     */
+    public String chat(String userMessage) {
+        return chatClient.prompt()
+                .user(userMessage)
+                .call()
+                .content();
+    }
+}
