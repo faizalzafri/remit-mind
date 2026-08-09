@@ -1,8 +1,10 @@
 package com.remitmind.ai.config;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
 
 /**
  * AI configuration for the RemitMind copilot.
@@ -10,22 +12,13 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class AiConfig {
 
+    @Value("classpath:prompts/system-prompt.st")
+    private Resource systemPromptResource;
+
     @Bean
     ChatClient chatClient(ChatClient.Builder builder) {
         return builder
-                .defaultSystem("""
-                        You are RemitMind, an AI-powered remittance assistant.
-                        You help users draft international money transfers.
-                        
-                        Your responsibilities:
-                        - Understand transfer requests described in natural language
-                        - Ask clarifying questions when information is missing
-                        - Provide clear, concise responses
-                        
-                        Keep responses short and professional.
-                        Do not make up exchange rates or compliance rules.
-                        If you don't know something, say so.
-                        """)
+                .defaultSystem(systemPromptResource)
                 .build();
     }
 }

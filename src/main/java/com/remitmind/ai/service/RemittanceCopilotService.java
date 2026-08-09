@@ -1,5 +1,7 @@
 package com.remitmind.ai.service;
 
+import java.time.LocalDate;
+
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
@@ -27,6 +29,7 @@ public class RemittanceCopilotService {
      */
     public String chat(String userMessage) {
         return chatClient.prompt()
+                .system(s -> s.param("currentDate", LocalDate.now().toString()))
                 .user(userMessage)
                 .call()
                 .content();
