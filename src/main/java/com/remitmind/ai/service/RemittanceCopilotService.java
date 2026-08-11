@@ -1,7 +1,7 @@
 package com.remitmind.ai.service;
 
+import com.remitmind.ai.domain.CopilotResponse;
 import java.time.LocalDate;
-
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
@@ -33,5 +33,20 @@ public class RemittanceCopilotService {
                 .user(userMessage)
                 .call()
                 .content();
+    }
+
+    /**
+     * Sends a user message to the LLM and returns a structured, parsed response.
+     * Maps the natural language text directly into the CopilotResponse record.
+     *
+     * @param userMessage the natural language request containing transfer intents
+     * @return the parsed CopilotResponse object
+     */
+    public CopilotResponse parse(String userMessage) {
+        return chatClient.prompt()
+                .system(s -> s.param("currentDate", LocalDate.now().toString()))
+                .user(userMessage)
+                .call()
+                .entity(CopilotResponse.class);
     }
 }

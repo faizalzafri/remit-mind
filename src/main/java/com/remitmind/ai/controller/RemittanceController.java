@@ -1,5 +1,6 @@
 package com.remitmind.ai.controller;
 
+import com.remitmind.ai.domain.CopilotResponse;
 import com.remitmind.ai.service.RemittanceCopilotService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -30,6 +31,15 @@ public class RemittanceController {
     public ResponseEntity<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
         String response = copilotService.chat(request.message());
         return ResponseEntity.ok(new ChatResponse(response));
+    }
+
+    /**
+     * Parse endpoint: takes natural language request and extracts structured transaction data.
+     */
+    @PostMapping("/parse")
+    public ResponseEntity<CopilotResponse> parse(@Valid @RequestBody ChatRequest request) {
+        CopilotResponse response = copilotService.parse(request.message());
+        return ResponseEntity.ok(response);
     }
 
     /**
