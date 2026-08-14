@@ -1,6 +1,7 @@
 package com.remitmind.ai.config;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,7 +11,7 @@ import org.springframework.core.io.Resource;
  * AI configuration for the RemitMind copilot.
  */
 @Configuration
-public class AiConfig {
+public class  AiConfig {
 
     @Value("classpath:prompts/system-prompt.st")
     private Resource systemPromptResource;
@@ -19,6 +20,7 @@ public class AiConfig {
     ChatClient chatClient(ChatClient.Builder builder) {
         return builder
                 .defaultSystem(systemPromptResource)
+                .defaultAdvisors(new SimpleLoggerAdvisor())
                 .build();
     }
 }

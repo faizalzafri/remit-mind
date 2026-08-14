@@ -1,5 +1,7 @@
 package com.remitmind.ai.service;
 
+import com.remitmind.ai.config.PromptGuardrailAdvisor;
+import com.remitmind.ai.config.RequestTraceIdAdvisor;
 import com.remitmind.ai.domain.CopilotResponse;
 import java.time.LocalDate;
 import org.springframework.ai.chat.client.ChatClient;
@@ -8,9 +10,9 @@ import org.springframework.stereotype.Service;
 /**
  * Core copilot service that orchestrates AI interactions.
  *
- * At this stage, the service is stateless: each call is an independent
- * LLM request with no memory of previous interactions. The system prompt
- * (set in AiConfig) is sent with every request automatically.
+ * <p>Demonstrates clean separation: business logic is focused here,
+ * while security scanning, tracing, and timing execution are handled
+ * by decoupled standalone advisors.
  */
 @Service
 public class RemittanceCopilotService {
@@ -29,6 +31,7 @@ public class RemittanceCopilotService {
      */
     public String chat(String userMessage) {
         return chatClient.prompt()
+                .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor())
                 .system(s -> s.param("currentDate", LocalDate.now().toString()))
                 .user(userMessage)
                 .call()
@@ -44,6 +47,7 @@ public class RemittanceCopilotService {
      */
     public CopilotResponse parse(String userMessage) {
         return chatClient.prompt()
+                .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor())
                 .system(s -> s.param("currentDate", LocalDate.now().toString()))
                 .user(userMessage)
                 .call()
