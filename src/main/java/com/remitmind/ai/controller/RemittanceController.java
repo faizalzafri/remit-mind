@@ -29,7 +29,8 @@ public class RemittanceController {
      */
     @PostMapping("/chat")
     public ResponseEntity<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
-        String response = copilotService.chat(request.message());
+        String sessionId = request.sessionId() != null ? request.sessionId() : java.util.UUID.randomUUID().toString();
+        String response = copilotService.chat(sessionId, request.message());
         return ResponseEntity.ok(new ChatResponse(response));
     }
 
@@ -47,7 +48,8 @@ public class RemittanceController {
      */
     public record ChatRequest(
             @NotBlank(message = "Message must not be blank")
-            String message
+            String message,
+            String sessionId
     ) {}
 
     /**
