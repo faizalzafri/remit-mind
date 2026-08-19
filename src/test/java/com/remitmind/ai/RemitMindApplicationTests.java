@@ -82,4 +82,41 @@ class RemitMindApplicationTests {
         // Assert that memory context holds (should recognize update to 150 USD)
         assertThat(response2.toLowerCase()).contains("150");
     }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".+")
+    void testExchangeRateToolCalling() {
+        String response = copilotService.chat(
+            "fx-session",
+            "What is the live exchange rate from USD to MXN? Respond with a single number representing the rate."
+        );
+        assertThat(response).isNotBlank();
+        
+        // Try parsing the rate (should be a positive number like 19.5)
+        try {
+            double rate = Double.parseDouble(response.trim());
+            assertThat(rate).isGreaterThan(0.0);
+        } catch (NumberFormatException e) {
+            // Sometimes Gemini responds with sentences containing the rate (e.g. "The rate is 19.5").
+            // We just verify it mentions a rate greater than 0.
+            assertThat(response).matches(".*[0-9]+\\.[0-9]+.*");
+        }
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".+")
+    void testCountryComplianceToolCallingLimitExceeded() {
+        // Limit for Mexico is $5000. 6000 USD exceeds the limit.
+        CopilotResponse response = copilotService.parse(
+            "Draft a transfer of 6000 USD from Alice to Bob in Mexico for family support."
+        );
+
+        assertThat(response).isNotNull();
+        assertThat(response.auditReport()).isNotNull();
+        
+        // Exceeding limit forces status to FLAG_MANUAL_REVIEW
+        assertThat(response.auditReport().status()).isEqualTo("FLAG_MANUAL_REVIEW");
+        assertThat(response.auditReport().riskLevel()).isEqualTo("MEDIUM");
+        assertThat(response.auditReport().requiredDocuments()).contains("Proof of Funds", "ID Card");
+    }
 }

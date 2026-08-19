@@ -19,16 +19,25 @@ import org.springframework.stereotype.Service;
  *
  * <p>
  * Conversation history memory is managed by the MessageChatMemoryAdvisor.
+ *
+ * <p>
+ * Dynamic tool capabilities (exchange rates and compliance rules) are registered
+ * on prompt pipelines to enable function calling at request-time.
  */
 @Service
 public class RemittanceCopilotService {
 
     private final ChatClient chatClient;
     private final ChatMemory chatMemory;
+    private final ExchangeRateTool exchangeRateTool;
+    private final CountryDataTool countryDataTool;
 
-    public RemittanceCopilotService(ChatClient chatClient, ChatMemory chatMemory) {
+    public RemittanceCopilotService(ChatClient chatClient, ChatMemory chatMemory,
+                                    ExchangeRateTool exchangeRateTool, CountryDataTool countryDataTool) {
         this.chatClient = chatClient;
         this.chatMemory = chatMemory;
+        this.exchangeRateTool = exchangeRateTool;
+        this.countryDataTool = countryDataTool;
     }
 
     /**
@@ -43,6 +52,7 @@ public class RemittanceCopilotService {
         return chatClient.prompt()
                 .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor(), MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, sessionId))
+                .tools(exchangeRateTool, countryDataTool)
                 .system(s -> s.param("currentDate", LocalDate.now().toString()))
                 .user(userMessage)
                 .call()
@@ -59,6 +69,7 @@ public class RemittanceCopilotService {
     public CopilotResponse parse(String userMessage) {
         return chatClient.prompt()
                 .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor())
+                .tools(exchangeRateTool, countryDataTool)
                 .system(s -> s.param("currentDate", LocalDate.now().toString()))
                 .user(userMessage)
                 .call()
