@@ -1,0 +1,22 @@
+RemitMind Compliance Rulebook
+
+Corridor: United States to Mexico
+Transfers from the United States to Mexico are capped at $5,000 per transaction under the standard compliance corridor. Any transfer exceeding this limit must be flagged for manual review and requires the sender to provide proof of funds together with a government-issued identification card. Senders remitting for a verified medical emergency may request an expedited exception to the manual review queue, but the receiving compliance officer must independently confirm the medical claim with supporting documentation before the exception is granted.
+
+Corridor: United States to Nigeria
+Transfers to Nigeria exceeding $1,000 require enhanced due diligence documentation, including a signed purpose-of-transfer declaration describing the relationship between sender and receiver. This enhanced documentation requirement does not apply when the sender is a verified non-governmental organization conducting registered disaster relief operations, provided the NGO's registration number is supplied with the transaction and matches an active registry entry.
+
+Corridor: United States to European Union Member States
+Transfers to European Union member states benefit from a simplified declaration corridor with a limit of $5,000 per transaction. No additional corridor duties apply to transfers below this threshold. Transfers above $5,000 fall back to the standard anti-money-laundering declaration process that applies to all high-value international transfers, regardless of destination.
+
+Corridor: United States to Rest-of-World Destinations
+Transfers to destinations outside the corridors listed above default to a $2,000 limit and are subject to a high-scrutiny compliance process. This process requires both purpose-of-transfer verification and receiver-side identity documentation before funds may be released to the receiving party.
+
+Sanctions and Watchlist Screening
+Every receiver name must be screened against the sender's declared purpose of transfer before a transaction is approved. Transactions where the declared purpose is vague, generic, or contradicts the receiver's stated relationship to the sender should be flagged for manual review regardless of the transfer amount, even when the amount is within the corridor's standard limit.
+
+Documentation Requirements for Flagged Transactions
+Any transaction flagged for manual review must include, at minimum, a valid proof-of-funds document and a government-issued identification card for the sender. Transactions flagged specifically due to sanctions or watchlist screening additionally require a written explanation describing the sender-receiver relationship and the specific purpose of the transfer.
+
+Repeat Transfer Monitoring
+Senders who initiate more than three transfers to the same receiver within a rolling thirty-day window should be flagged for structuring review, even if each individual transfer falls under the corridor limit. Structuring review requires a cumulative transaction history report before any further transfers to that receiver are approved.
