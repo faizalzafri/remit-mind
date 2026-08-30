@@ -119,4 +119,41 @@ class RemitMindApplicationTests {
         assertThat(response.auditReport().riskLevel()).isEqualTo("MEDIUM");
         assertThat(response.auditReport().requiredDocuments()).contains("Proof of Funds", "ID Card");
     }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".+")
+    void testComplianceRagAppliesNigeriaDueDiligenceBelowToolLimit() {
+        // $1500 is under CountryDataTool's hardcoded $2000 fallback limit for Nigeria,
+        // so rule 4 (tool limit alone) would not flag this. compliance-rules.txt has a
+        // Nigeria-specific rule: transfers over $1000 need enhanced due diligence
+        // documentation. This proves RAG context is actually influencing the audit
+        // beyond CountryDataTool's numbers, not just restating them.
+        CopilotResponse response = copilotService.parse(
+            "Draft a transfer of 1500 USD from Alice to Bob in Nigeria for a business payment."
+        );
+
+        assertThat(response).isNotNull();
+        assertThat(response.auditReport()).isNotNull();
+        assertThat(response.auditReport().rationale().toLowerCase())
+            .containsAnyOf("due diligence", "declaration", "documentation");
+    }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".+")
+    void testComplianceRagRecognizesNgoException() {
+        // Same corridor and amount as above, but the sender is a verified NGO doing
+        // disaster relief -- compliance-rules.txt's Nigeria exception should apply.
+        // This is the actual end-to-end test of the Milestone 7-9 arc: the rule and
+        // its exception were split into separate chunks during chunking, and the
+        // exception chunk never mentions "Nigeria" at all (see EXPERIMENTS.md).
+        CopilotResponse response = copilotService.parse(
+            "Draft a transfer of 1500 USD from Alice to Bob in Nigeria for verified NGO "
+                + "disaster relief operations, registration number NGO-4471."
+        );
+
+        assertThat(response).isNotNull();
+        assertThat(response.auditReport()).isNotNull();
+        assertThat(response.auditReport().rationale().toLowerCase())
+            .containsAnyOf("ngo", "non-governmental", "exception", "disaster relief");
+    }
 }

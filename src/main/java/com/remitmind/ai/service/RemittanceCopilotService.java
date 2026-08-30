@@ -6,6 +6,7 @@ import com.remitmind.ai.domain.CopilotResponse;
 import java.time.LocalDate;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.stereotype.Service;
 
@@ -14,8 +15,8 @@ import org.springframework.stereotype.Service;
  *
  * <p>
  * Demonstrates clean separation: business logic is focused here,
- * while security scanning, tracing, and timing execution are handled
- * by decoupled standalone advisors.
+ * while security scanning, tracing, execution timing, and compliance-context
+ * retrieval are handled by decoupled advisors.
  *
  * <p>
  * Conversation history memory is managed by the MessageChatMemoryAdvisor.
@@ -31,26 +32,30 @@ public class RemittanceCopilotService {
     private final ChatMemory chatMemory;
     private final ExchangeRateTool exchangeRateTool;
     private final CountryDataTool countryDataTool;
+    private final Advisor complianceRetrievalAdvisor;
 
     public RemittanceCopilotService(ChatClient chatClient, ChatMemory chatMemory,
-                                    ExchangeRateTool exchangeRateTool, CountryDataTool countryDataTool) {
+                                    ExchangeRateTool exchangeRateTool, CountryDataTool countryDataTool,
+                                    Advisor complianceRetrievalAdvisor) {
         this.chatClient = chatClient;
         this.chatMemory = chatMemory;
         this.exchangeRateTool = exchangeRateTool;
         this.countryDataTool = countryDataTool;
+        this.complianceRetrievalAdvisor = complianceRetrievalAdvisor;
     }
 
     /**
      * Sends a user message to the LLM and returns the response as plain text.
      * Manages multi-turn conversation memory using the session ID.
-     * 
+     *
      * @param sessionId   the session identifier for conversation history tracking
      * @param userMessage the natural language input from the user
      * @return the model's text response
      */
     public String chat(String sessionId, String userMessage) {
         return chatClient.prompt()
-                .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor(), MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor(), complianceRetrievalAdvisor,
+                        MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, sessionId))
                 .tools(exchangeRateTool, countryDataTool)
                 .system(s -> s.param("currentDate", LocalDate.now().toString()))
@@ -68,7 +73,7 @@ public class RemittanceCopilotService {
      */
     public CopilotResponse parse(String userMessage) {
         return chatClient.prompt()
-                .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor())
+                .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor(), complianceRetrievalAdvisor)
                 .tools(exchangeRateTool, countryDataTool)
                 .system(s -> s.param("currentDate", LocalDate.now().toString()))
                 .user(userMessage)
