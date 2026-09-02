@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RemitMind Copilot</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --panel-border: #e2e2e2;
+    --text: #1f2328;
+    --muted: #6b7280;
+    --accent: #2563eb;
+    --user-bubble: #2563eb;
+    --user-text: #ffffff;
+    --bot-bubble: #f1f3f5;
+    --bot-text: #1f2328;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #fafafa;
+    color: var(--text);
+  }
+
+  #rm-launcher {
+    position: fixed;
+    left: 20px;
+    bottom: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 1000;
+  }
+  #rm-launcher:hover { filter: brightness(1.1); }
+
+  #rm-panel {
+    position: fixed;
+    left: 20px;
+    bottom: 88px;
+    width: 340px;
+    height: 460px;
+    background: var(--bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    z-index: 1000;
+  }
+  #rm-panel.open { display: flex; }
+
+  #rm-header {
+    padding: 12px 14px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  #rm-header .rm-sub {
+    font-weight: 400;
+    font-size: 11px;
+    opacity: 0.85;
+  }
+  #rm-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+  }
+
+  #rm-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .rm-msg {
+    max-width: 82%;
+    padding: 8px 12px;
+    border-radius: 14px;
+    font-size: 13px;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .rm-msg.user {
+    align-self: flex-end;
+    background: var(--user-bubble);
+    color: var(--user-text);
+    border-bottom-right-radius: 4px;
+  }
+  .rm-msg.bot {
+    align-self: flex-start;
+    background: var(--bot-bubble);
+    color: var(--bot-text);
+    border-bottom-left-radius: 4px;
+  }
+  .rm-msg.error {
+    align-self: flex-start;
+    background: #fdecea;
+    color: #b3261e;
+    border-bottom-left-radius: 4px;
+  }
+  .rm-msg.pending {
+    align-self: flex-start;
+    background: var(--bot-bubble);
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  #rm-input-row {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    border-top: 1px solid var(--panel-border);
+  }
+  #rm-input {
+    flex: 1;
+    border: 1px solid var(--panel-border);
+    border-radius: 20px;
+    padding: 8px 14px;
+    font-size: 13px;
+    outline: none;
+  }
+  #rm-input:focus { border-color: var(--accent); }
+  #rm-send {
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 20px;
+    padding: 0 16px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #rm-send:disabled { opacity: 0.5; cursor: default; }
+</style>
+</head>
+<body>
+
+<button id="rm-launcher" aria-label="Open RemitMind chat">💬</button>
+
+<div id="rm-panel">
+  <div id="rm-header">
+    <div>
+      RemitMind Copilot
+      <div class="rm-sub" id="rm-session-label"></div>
+    </div>
+    <button id="rm-close" aria-label="Close chat">&times;</button>
+  </div>
+  <div id="rm-messages"></div>
+  <div id="rm-input-row">
+    <input id="rm-input" type="text" placeholder="Ask about a transfer..." autocomplete="off">
+    <button id="rm-send">Send</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  const STORAGE_KEY = "rm-chat-history";
+  const SESSION_KEY = "rm-chat-session-id";
+
+  const launcher = document.getElementById("rm-launcher");
+  const panel = document.getElementById("rm-panel");
+  const closeBtn = document.getElementById("rm-close");
+  const messagesEl = document.getElementById("rm-messages");
+  const input = document.getElementById("rm-input");
+  const sendBtn = document.getElementById("rm-send");
+  const sessionLabel = document.getElementById("rm-session-label");
+
+  function getSessionId() {
+    let id = sessionStorage.getItem(SESSION_KEY);
+    if (!id) {
+      id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random());
+      sessionStorage.setItem(SESSION_KEY, id);
+    }
+    return id;
+  }
+
+  function loadHistory() {
+    try {
+      return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || "[]");
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveHistory(history) {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+  }
+
+  function renderMessage(role, text) {
+    const div = document.createElement("div");
+    div.className = "rm-msg " + role;
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return div;
+  }
+
+  const sessionId = getSessionId();
+  sessionLabel.textContent = "session " + sessionId.slice(0, 8);
+
+  const history = loadHistory();
+  history.forEach(m => renderMessage(m.role, m.text));
+
+  function togglePanel(open) {
+    panel.classList.toggle("open", open);
+    if (open) input.focus();
+  }
+
+  launcher.addEventListener("click", () => togglePanel(!panel.classList.contains("open")));
+  closeBtn.addEventListener("click", () => togglePanel(false));
+
+  async function sendMessage() {
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = "";
+    input.disabled = true;
+    sendBtn.disabled = true;
+
+    renderMessage("user", text);
+    const history = loadHistory();
+    history.push({ role: "user", text });
+    saveHistory(history);
+
+    const pending = renderMessage("pending", "...");
+
+    try {
+      const res = await fetch("/api/copilot/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, message: text })
+      });
+
+      pending.remove();
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        renderMessage("error", "Error " + res.status + (errText ? ": " + errText : ""));
+      } else {
+        const data = await res.json();
+        renderMessage("bot", data.response);
+        const h = loadHistory();
+        h.push({ role: "bot", text: data.response });
+        saveHistory(h);
+      }
+    } catch (err) {
+      pending.remove();
+      renderMessage("error", "Could not reach the server: " + err.message);
+    } finally {
+      input.disabled = false;
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  }
+
+  sendBtn.addEventListener("click", sendMessage);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") sendMessage();
+  });
+})();
+</script>
+
+</body>
+</html>
