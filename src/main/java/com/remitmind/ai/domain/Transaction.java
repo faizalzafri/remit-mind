@@ -1,7 +1,7 @@
 package com.remitmind.ai.domain;
 
 /**
- * Immutable record representing the extracted remittance transaction details.
+ * Transfer details extracted from a user's message.
  */
 public record Transaction(
     String senderName,

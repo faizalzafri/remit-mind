@@ -13,7 +13,7 @@ import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * Country compliance and corridor limit lookup tool querying the public RestCountries API.
+ * Looks up a country's transfer limit and compliance rules.
  */
 @Component
 public class CountryDataTool {
@@ -33,7 +33,7 @@ public class CountryDataTool {
     }
 
     /**
-     * DTO mapping elements of RestCountries API response.
+     * Shape of the RestCountries API's response.
      */
     @JsonIgnoreProperties(ignoreUnknown = true)
     private record RestCountriesResponse(
@@ -43,10 +43,10 @@ public class CountryDataTool {
     ) {}
 
     /**
-     * Fetches geographical context and resolves transaction limits / guidelines.
+     * Looks up the transfer limit and compliance guidance for a country.
      *
-     * @param countryName the name of the destination country (e.g., Mexico, Canada)
-     * @return CountryComplianceInfo details
+     * @param countryName the destination country (e.g., Mexico, Canada)
+     * @return the transfer limit and compliance guidance
      */
     @Tool(description = "Retrieve compliance guidelines, corridor limits, and taxation rules for a target destination country.")
     public CountryComplianceInfo getCountryCompliance(String countryName) {
@@ -68,7 +68,7 @@ public class CountryDataTool {
                     currencyCode = target.currencies().keySet().iterator().next();
                 }
 
-                // Compliance Rule Engine
+                // Corridor-based limit rules
                 double maxLimit = 2000.0;
                 String taxGuidelines = "Standard AML declaration required for foreign transfers.";
 
@@ -94,10 +94,10 @@ public class CountryDataTool {
             logger.error("CountryDataTool failure query for country {}: {}", countryName, e.getMessage());
         }
 
-        // Return safe compliance fallback limits
+        // Used only when the lookup above fails
         double maxLimit = 2000.0;
         if (countryName.equalsIgnoreCase("Mexico")) {
-            maxLimit = 5000.0; // Keep Mexico test limit accurate even if RestCountries is down
+            maxLimit = 5000.0; // Mexico's real limit, even when the lookup fails
         }
         return new CountryComplianceInfo(
                 countryName,

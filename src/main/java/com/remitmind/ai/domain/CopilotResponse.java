@@ -1,7 +1,7 @@
 package com.remitmind.ai.domain;
 
 /**
- * Immutable record combining conversational LLM responses with extracted transaction parameters.
+ * The copilot's reply, plus the transfer it extracted and its compliance check.
  */
 public record CopilotResponse(
     String chatResponse,

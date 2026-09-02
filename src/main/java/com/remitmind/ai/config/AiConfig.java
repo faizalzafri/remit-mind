@@ -52,20 +52,12 @@ public class AiConfig {
     }
 
     /**
-     * RAG advisor over the compliance rulebook. Uses a custom prompt template that
-     * appends retrieved context below the user's original message instead of the
-     * default ContextualQueryAugmenter behavior, which replaces the message
-     * entirely
-     * with a "Context is below... Query: ... Answer:" template.
+     * Looks up relevant compliance rules for each request and adds them below the
+     * user's original message, without replacing it.
      *
-     * allowEmptyContext(true) means messages with no matching compliance context
-     * (most messages) pass through completely unchanged.
-     *
-     * Ordered to run after {@code PromptGuardrailAdvisor} (-100) so a blocked
-     * prompt
-     * never pays for retrieval, and inside {@code RequestTraceIdAdvisor}'s (0)
-     * timing
-     * so its latency measurement includes retrieval.
+     * <p>
+     * If nothing relevant is found, the message passes through unchanged. Runs
+     * after the guardrail check, so a blocked message never triggers a lookup.
      */
     @Bean
     Advisor complianceRetrievalAdvisor(VectorStore vectorStore) {

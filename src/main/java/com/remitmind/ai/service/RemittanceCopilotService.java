@@ -11,19 +11,8 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.stereotype.Service;
 
 /**
- * Core copilot service that orchestrates AI interactions.
- *
- * <p>
- * Demonstrates clean separation: business logic is focused here,
- * while security scanning, tracing, execution timing, and compliance-context
- * retrieval are handled by decoupled advisors.
- *
- * <p>
- * Conversation history memory is managed by the MessageChatMemoryAdvisor.
- *
- * <p>
- * Dynamic tool capabilities (exchange rates and compliance rules) are registered
- * on prompt pipelines to enable function calling at request-time.
+ * Sends user messages to the model. Security checks, timing, and compliance
+ * lookups are handled by advisors attached to each call, not here.
  */
 @Service
 public class RemittanceCopilotService {
@@ -45,12 +34,12 @@ public class RemittanceCopilotService {
     }
 
     /**
-     * Sends a user message to the LLM and returns the response as plain text.
-     * Manages multi-turn conversation memory using the session ID.
+     * Sends a message and returns a plain-text reply. Remembers earlier messages
+     * in the same session.
      *
-     * @param sessionId   the session identifier for conversation history tracking
-     * @param userMessage the natural language input from the user
-     * @return the model's text response
+     * @param sessionId   identifies the conversation to remember
+     * @param userMessage the user's message
+     * @return the model's text reply
      */
     public String chat(String sessionId, String userMessage) {
         return chatClient.prompt()
@@ -65,11 +54,11 @@ public class RemittanceCopilotService {
     }
 
     /**
-     * Sends a user message to the LLM and returns a structured, parsed response.
-     * Maps the natural language text directly into the CopilotResponse record.
+     * Sends a message and returns the extracted transfer plus its compliance
+     * check. Does not remember earlier messages.
      *
-     * @param userMessage the natural language request containing transfer intents
-     * @return the parsed CopilotResponse object
+     * @param userMessage the user's transfer request
+     * @return the extracted transfer and its compliance check
      */
     public CopilotResponse parse(String userMessage) {
         return chatClient.prompt()

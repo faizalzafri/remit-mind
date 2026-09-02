@@ -3,11 +3,11 @@ package com.remitmind.ai.domain;
 import java.util.List;
 
 /**
- * Immutable record representing compliance screening and risk audit logic.
+ * Result of a compliance check on a transfer.
  */
 public record RiskAuditReport(
-    String status,          // APPROVED, REJECTED, FLAG_MANUAL_REVIEW
-    String riskLevel,       // LOW, MEDIUM, HIGH
-    String rationale,       // Detailed compliance explanation
-    List<String> requiredDocuments // e.g. "ID Card", "Proof of Funds"
+    String status,          // APPROVED, REJECTED, or FLAG_MANUAL_REVIEW
+    String riskLevel,       // LOW, MEDIUM, or HIGH
+    String rationale,       // Why this status and risk level were chosen
+    List<String> requiredDocuments // Documents needed before the transfer can proceed
 ) {}

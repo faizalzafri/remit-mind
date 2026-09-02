@@ -1,7 +1,7 @@
 package com.remitmind.ai.domain;
 
 /**
- * Compliance details and limit guidelines for a destination country.
+ * Transfer limit and compliance guidelines for a destination country.
  */
 public record CountryComplianceInfo(
     String countryName,

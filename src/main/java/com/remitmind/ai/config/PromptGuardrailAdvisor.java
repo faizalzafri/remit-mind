@@ -10,7 +10,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 
 /**
- * Standalone Advisor to scan user prompt messages for injection patterns.
+ * Blocks messages that try to override the copilot's instructions.
  */
 public class PromptGuardrailAdvisor implements CallAdvisor {
 
@@ -23,7 +23,7 @@ public class PromptGuardrailAdvisor implements CallAdvisor {
 
     @Override
     public int getOrder() {
-        return -100; // Run early in the chain
+        return -100; // Runs before everything else, so a blocked message never reaches the model
     }
 
     @Override

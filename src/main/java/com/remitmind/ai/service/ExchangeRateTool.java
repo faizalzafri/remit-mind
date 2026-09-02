@@ -10,7 +10,7 @@ import org.springframework.web.client.RestClient;
 import java.util.Map;
 
 /**
- * Exchange rate lookup tool querying the public Frankfurter API.
+ * Looks up live currency exchange rates from the Frankfurter API.
  */
 @Component
 public class ExchangeRateTool {
@@ -30,7 +30,7 @@ public class ExchangeRateTool {
     }
 
     /**
-     * DTO for mapping the Frankfurter API response.
+     * Shape of the Frankfurter API's response.
      */
     private record FrankfurterResponse(String base, Map<String, Double> rates) {}
 
@@ -64,7 +64,7 @@ public class ExchangeRateTool {
             logger.error("ExchangeRateTool failure fetching rate for {} -> {}: {}", base, quote, e.getMessage());
         }
 
-        // Return a mock default if API is unavailable, as a fallback standard
+        // Used only when the live API call above fails
         if (base.equalsIgnoreCase("USD") && quote.equalsIgnoreCase("MXN")) {
             return 20.0;
         }

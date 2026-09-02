@@ -10,7 +10,7 @@ import org.springframework.ai.chat.client.advisor.api.CallAdvisorChain;
 import java.util.UUID;
 
 /**
- * Standalone Advisor to inject execution trace ID and monitor response latency.
+ * Logs a trace ID and how long each request takes.
  */
 public class RequestTraceIdAdvisor implements CallAdvisor {
 
@@ -23,7 +23,7 @@ public class RequestTraceIdAdvisor implements CallAdvisor {
 
     @Override
     public int getOrder() {
-        return 0; // Default execution order
+        return 0; // Runs after the guardrail check
     }
 
     @Override

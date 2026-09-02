@@ -24,8 +24,8 @@ public class RemittanceController {
     }
 
     /**
-     * Simple chat endpoint: send a message, get a response.
-     * No memory, no structured output — just text in, text out.
+     * Send a message, get a plain-text reply. Remembers the conversation across
+     * calls that share the same sessionId.
      */
     @PostMapping("/chat")
     public ResponseEntity<ChatResponse> chat(@Valid @RequestBody ChatRequest request) {
@@ -35,7 +35,8 @@ public class RemittanceController {
     }
 
     /**
-     * Parse endpoint: takes natural language request and extracts structured transaction data.
+     * Send a message, get back the extracted transfer and its compliance check
+     * as structured data. Does not remember earlier messages.
      */
     @PostMapping("/parse")
     public ResponseEntity<CopilotResponse> parse(@Valid @RequestBody ChatRequest request) {
@@ -44,7 +45,7 @@ public class RemittanceController {
     }
 
     /**
-     * Request DTO for the chat endpoint.
+     * Request body for both endpoints.
      */
     public record ChatRequest(
             @NotBlank(message = "Message must not be blank")

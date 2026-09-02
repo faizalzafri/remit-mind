@@ -11,9 +11,13 @@ class ComplianceDocumentIngestionServiceTest {
 
     @Test
     void splitsComplianceRulesIntoMultipleChunksWithMetadata() {
+        // Given the compliance rulebook file
+
+        // When it is loaded and split into chunks
         List<Document> chunks = ComplianceDocumentIngestionService
                 .loadAndSplit(new ClassPathResource("documents/compliance-rules.txt"));
 
+        // Then it produces more than one chunk, each with text and tracking metadata
         assertThat(chunks).hasSizeGreaterThan(1);
 
         for (int i = 0; i < chunks.size(); i++) {
