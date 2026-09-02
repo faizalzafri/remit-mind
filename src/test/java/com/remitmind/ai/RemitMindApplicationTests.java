@@ -156,4 +156,40 @@ class RemitMindApplicationTests {
         assertThat(response.auditReport().rationale().toLowerCase())
             .containsAnyOf("ngo", "non-governmental", "exception", "disaster relief");
     }
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "GEMINI_API_KEY", matches = ".+")
+    void testNigeriaRationaleIsGroundedInRetrievedComplianceContext() throws java.io.IOException {
+        // Given a Nigeria transfer, and everything the copilot could legitimately
+        // base its answer on: the matching compliance rules, the country lookup
+        // tool's result, and the copilot's own instructions
+        String message = "Draft a transfer of 1500 USD from Alice to Bob in Nigeria for a business payment.";
+
+        // Mirrors what the retrieval advisor would look up for this message
+        List<Document> retrievedContext = new ArrayList<>(vectorStore.similaritySearch(
+                SearchRequest.builder().query(message).topK(3).similarityThreshold(0.5).build()));
+        assertThat(retrievedContext).isNotEmpty();
+
+        CountryComplianceInfo nigeriaCompliance = countryDataTool.getCountryCompliance("Nigeria");
+        retrievedContext.add(new Document("CountryDataTool result for Nigeria: maxTransferLimit=%s, currencyCode=%s, region=%s, taxationGuidelines=%s"
+                .formatted(nigeriaCompliance.maxTransferLimit(), nigeriaCompliance.currencyCode(),
+                        nigeriaCompliance.region(), nigeriaCompliance.taxationGuidelines())));
+
+        String systemPromptText = StreamUtils.copyToString(
+                new ClassPathResource("prompts/system-prompt.st").getInputStream(), StandardCharsets.UTF_8);
+        retrievedContext.add(new Document(systemPromptText));
+
+        // When the copilot parses the transfer
+        CopilotResponse response = copilotService.parse(message);
+        String rationale = response.auditReport().rationale();
+
+        // Then its stated reasoning is actually backed by that material, not invented
+        FactCheckingEvaluator factChecker = FactCheckingEvaluator.builder(chatClientBuilder).build();
+        EvaluationResponse evaluation = factChecker.evaluate(new EvaluationRequest(retrievedContext, rationale));
+
+        assertThat(evaluation.isPass())
+                .as("Rationale should be grounded in the retrieved context.%nRationale: %s%nContext: %s",
+                        rationale, retrievedContext.stream().map(Document::getText).toList())
+                .isTrue();
+    }
 }
