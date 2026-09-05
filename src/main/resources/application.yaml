@@ -2,6 +2,10 @@ spring:
   application:
     name: remit-mind
   ai:
+    model:
+      chat: ${AI_CHAT_PROVIDER:ollama} # google-genai or ollama - selects which chat model auto-configures
+      embedding: ${AI_EMBEDDING_PROVIDER:ollama} # gates OllamaEmbeddingAutoConfiguration (checks spring.ai.model.embedding)
+      embedding.text: ${AI_EMBEDDING_PROVIDER:ollama} # gates GoogleGenAiTextEmbeddingAutoConfiguration (checks spring.ai.model.embedding.text instead - a different property, verified against 2.0.0 source)
     google:
       genai:
         api-key: ${GEMINI_API_KEY}
@@ -13,3 +17,9 @@ spring:
           api-key: ${GEMINI_API_KEY}
           text:
             model: gemini-embedding-001
+    ollama:
+      chat:
+        model: ${OLLAMA_CHAT_MODEL:qwen2.5:7b}
+        temperature: 0.3
+      embedding:
+        model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}

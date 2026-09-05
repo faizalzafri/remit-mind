@@ -6,6 +6,7 @@
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.1.0-6DB33F?style=for-the-badge&logo=spring&logoColor=white)](#)
 [![Spring AI](https://img.shields.io/badge/Spring%20AI-2.0.0-6DB33F?style=for-the-badge&logo=spring&logoColor=white)](#)
 [![Google Gemini](https://img.shields.io/badge/Gemini-3.5%20Flash-8E75C2?style=for-the-badge&logo=googlegemini&logoColor=white)](#)
+[![Ollama](https://img.shields.io/badge/Ollama-qwen2.5%3A7b-000000?style=for-the-badge&logo=ollama&logoColor=white)](https://ollama.com)
 [![Build Status](https://img.shields.io/badge/Build-Passing-44cc11?style=for-the-badge&logo=github&logoColor=white)](#)
 
 An AI-powered, compliance-aware remittance copilot designed to parse, validate, and audit international money transfers.
@@ -63,17 +64,115 @@ Queries Frankfurter FX API                               Queries RestCountries A
 ### Prerequisites
 * **Java 21** (or higher)
 * **Maven** (via packaged `./mvnw` wrapper)
-* **Google Gemini API Key** configured in your environment variables:
+* **Ollama** — chat and embeddings run locally by default, no API key needed (see setup below).
+  A **Google Gemini API Key** is only needed if you switch providers:
+
+  Bash:
   ```bash
   export GEMINI_API_KEY="your-gemini-api-key"
+  ```
+  Windows (cmd):
+  ```cmd
+  set GEMINI_API_KEY=your-gemini-api-key
+  ```
+  Windows (PowerShell):
+  ```powershell
+  $env:GEMINI_API_KEY = "your-gemini-api-key"
   ```
 
 ### Running the Application
 To build and start the Spring Boot dev server locally:
+
+Bash:
 ```bash
 ./mvnw spring-boot:run
 ```
+Windows (cmd):
+```cmd
+mvnw.cmd spring-boot:run
+```
+Windows (PowerShell):
+```powershell
+.\mvnw.cmd spring-boot:run
+```
 The endpoints will be exposed at `http://localhost:8080`.
+
+---
+
+## 🦙 Ollama Setup (default provider)
+
+Chat and embeddings both run locally through [Ollama](https://ollama.com) by default — no API key required.
+
+**1. Install Ollama**
+
+Windows (cmd or PowerShell):
+```cmd
+winget install --id Ollama.Ollama
+```
+macOS / Linux (bash):
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+It starts automatically as a background service on `http://localhost:11434`.
+
+**2. Pull the models**
+
+Same command in any shell:
+```bash
+ollama pull qwen2.5:7b         # chat model
+ollama pull nomic-embed-text   # embedding model
+```
+
+**3. Run**
+
+Bash:
+```bash
+./mvnw spring-boot:run
+```
+Windows (cmd):
+```cmd
+mvnw.cmd spring-boot:run
+```
+Windows (PowerShell):
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+To use a different chat model, override `OLLAMA_CHAT_MODEL` (must be a model you've pulled):
+
+Bash:
+```bash
+export OLLAMA_CHAT_MODEL="llama3.2"
+```
+Windows (cmd):
+```cmd
+set OLLAMA_CHAT_MODEL=llama3.2
+```
+Windows (PowerShell):
+```powershell
+$env:OLLAMA_CHAT_MODEL = "llama3.2"
+```
+
+To switch back to Gemini instead of Ollama:
+
+Bash:
+```bash
+export AI_CHAT_PROVIDER=google-genai
+export AI_EMBEDDING_PROVIDER=google-genai
+export GEMINI_API_KEY="your-gemini-api-key"
+```
+Windows (cmd):
+```cmd
+set AI_CHAT_PROVIDER=google-genai
+set AI_EMBEDDING_PROVIDER=google-genai
+set GEMINI_API_KEY=your-gemini-api-key
+```
+Windows (PowerShell):
+```powershell
+$env:AI_CHAT_PROVIDER = "google-genai"
+$env:AI_EMBEDDING_PROVIDER = "google-genai"
+$env:GEMINI_API_KEY = "your-gemini-api-key"
+```
 
 ---
 
@@ -82,8 +181,18 @@ The endpoints will be exposed at `http://localhost:8080`.
 The repository contains full integration tests that exercise advisor pipelines, tool-calling networks, and conversation session persistence. 
 
 To run the test suites:
+
+Bash:
 ```bash
 ./mvnw test
+```
+Windows (cmd):
+```cmd
+mvnw.cmd test
+```
+Windows (PowerShell):
+```powershell
+.\mvnw.cmd test
 ```
 
 *Note: Live integration tests will run if a `GEMINI_API_KEY` is present. If the environment variable is absent, integration tests are safely bypassed while offline unit tests verify the advisors and compilation.*
