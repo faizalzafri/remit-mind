@@ -68,6 +68,11 @@ public class ExchangeRateTool {
         if (base.equalsIgnoreCase("USD") && quote.equalsIgnoreCase("MXN")) {
             return 20.0;
         }
+
+        // Used only when the live API call above fails
+        if (base.equalsIgnoreCase("USD") && quote.equalsIgnoreCase("NGN")) {
+            return 1329.29;
+        }
         return 1.0;
     }
 }
