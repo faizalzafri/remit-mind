@@ -11,12 +11,17 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.generation.augmentation.ContextualQueryAugmenter;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
+import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
+
+import com.remitmind.ai.service.CountryDataTool;
+import com.remitmind.ai.service.ExchangeRateTool;
 
 /**
  * AI configuration for the RemitMind copilot.
@@ -87,6 +92,18 @@ public class AiConfig {
                 .documentRetriever(documentRetriever)
                 .queryAugmenter(queryAugmenter)
                 .order(50)
+                .build();
+    }
+
+    /**
+     * Exposes the same @Tool methods RemittanceCopilotService already uses locally
+     * as MCP tools, so an external MCP client can discover and call them too.
+     * No changes needed to ExchangeRateTool/CountryDataTool themselves.
+     */
+    @Bean
+    ToolCallbackProvider remittanceMcpToolCallbacks(ExchangeRateTool exchangeRateTool, CountryDataTool countryDataTool) {
+        return MethodToolCallbackProvider.builder()
+                .toolObjects(exchangeRateTool, countryDataTool)
                 .build();
     }
 }

@@ -23,6 +23,12 @@ spring:
         temperature: 0.3
       embedding:
         model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
+    mcp:
+      server:
+        name: remitmind-tools
+        version: 0.0.1
+        instructions: "Compliance-related lookup tools for international remittances: live FX rates and destination-country transfer limits."
+        protocol: STREAMABLE # must be set explicitly - the webmvc router bean's @ConditionalOnProperty has matchIfMissing=false, so McpServerProperties' own Java-level default of STREAMABLE doesn't satisfy it
 management:
   endpoints:
     web:
