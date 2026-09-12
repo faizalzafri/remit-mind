@@ -29,6 +29,15 @@ spring:
         version: 0.0.1
         instructions: "Compliance-related lookup tools for international remittances: live FX rates and destination-country transfer limits."
         protocol: STREAMABLE # must be set explicitly - the webmvc router bean's @ConditionalOnProperty has matchIfMissing=false, so McpServerProperties' own Java-level default of STREAMABLE doesn't satisfy it
+      client:
+        stdio:
+          connections:
+            filesystem:
+              command: ${MCP_FILESYSTEM_COMMAND:npx.cmd} # Windows needs the .cmd shim explicitly - Java's ProcessBuilder/CreateProcess won't resolve a bare "npx" on Windows (verified: "CreateProcess error=2"); Mac/Linux should override this to "npx"
+              args:
+                - "-y"
+                - "@modelcontextprotocol/server-filesystem"
+                - "${MCP_FILESYSTEM_ROOT:./mcp-filesystem-sandbox}"
 management:
   endpoints:
     web:

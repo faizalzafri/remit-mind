@@ -176,6 +176,73 @@ $env:GEMINI_API_KEY = "your-gemini-api-key"
 
 ---
 
+## 🔌 MCP (Model Context Protocol)
+
+RemitMind both **exposes** tools over MCP (an MCP server) and **consumes** an external MCP server (an MCP client).
+
+### MCP Server — exposes `ExchangeRateTool` / `CountryDataTool`
+
+Runs automatically with the app at `POST http://localhost:8080/mcp` (Streamable HTTP) — no extra setup needed.
+
+**Test it — automated:**
+
+Bash:
+```bash
+./mvnw test -Dtest=McpServerIntegrationTest
+```
+Windows (cmd):
+```cmd
+mvnw.cmd test -Dtest=McpServerIntegrationTest
+```
+Windows (PowerShell):
+```powershell
+.\mvnw.cmd test -Dtest=McpServerIntegrationTest
+```
+
+**Test it — interactively**, with the official MCP Inspector (same command any shell, once the app is already running):
+```
+npx @modelcontextprotocol/inspector
+```
+In the Inspector UI: Transport type **Streamable HTTP**, URL `http://localhost:8080/mcp`, **Connect**, then check the **Tools** tab for `getExchangeRate` / `getCountryCompliance`.
+
+### MCP Client — consumes the Filesystem MCP server
+
+`chat()` (not `parse()`) also has access to the official [Filesystem MCP reference server](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem), sandboxed to the `mcp-filesystem-sandbox/` directory, spawned automatically over STDIO when the app starts. Requires Node.js (`npx`) on your `PATH` — no separate install step, `npx -y` fetches the server on first use.
+
+**Windows note:** the configured command is `npx.cmd`, not `npx` — Java's `ProcessBuilder` can't resolve a bare `npx` on Windows (see `docs/learning/MISTAKES.md`). On macOS/Linux, override it:
+
+Bash:
+```bash
+export MCP_FILESYSTEM_COMMAND=npx
+```
+Windows (cmd):
+```cmd
+set MCP_FILESYSTEM_COMMAND=npx.cmd
+```
+Windows (PowerShell):
+```powershell
+$env:MCP_FILESYSTEM_COMMAND = "npx.cmd"
+```
+
+**Test it — automated** (asks the real copilot to list its sandboxed files):
+
+Bash:
+```bash
+./mvnw test -Dtest=McpClientIntegrationTest
+```
+Windows (cmd):
+```cmd
+mvnw.cmd test -Dtest=McpClientIntegrationTest
+```
+Windows (PowerShell):
+```powershell
+.\mvnw.cmd test -Dtest=McpClientIntegrationTest
+```
+
+**Try it live**, once the app is running — send a chat message asking it to list or read files in its sandbox (e.g. via the chat widget at `http://localhost:8080`, or `POST /api/copilot/chat`).
+
+---
+
 ## 🧪 Testing
 
 The repository contains full integration tests that exercise advisor pipelines, tool-calling networks, and conversation session persistence. 

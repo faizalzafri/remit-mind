@@ -8,6 +8,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 /**
@@ -22,20 +24,28 @@ public class RemittanceCopilotService {
     private final ExchangeRateTool exchangeRateTool;
     private final CountryDataTool countryDataTool;
     private final Advisor complianceRetrievalAdvisor;
+    private final ToolCallbackProvider mcpClientToolCallbacks;
 
     public RemittanceCopilotService(ChatClient chatClient, ChatMemory chatMemory,
                                     ExchangeRateTool exchangeRateTool, CountryDataTool countryDataTool,
-                                    Advisor complianceRetrievalAdvisor) {
+                                    Advisor complianceRetrievalAdvisor,
+                                    @Qualifier("mcpToolCallbacks") ToolCallbackProvider mcpClientToolCallbacks) {
         this.chatClient = chatClient;
         this.chatMemory = chatMemory;
         this.exchangeRateTool = exchangeRateTool;
         this.countryDataTool = countryDataTool;
         this.complianceRetrievalAdvisor = complianceRetrievalAdvisor;
+        this.mcpClientToolCallbacks = mcpClientToolCallbacks;
     }
 
     /**
      * Sends a message and returns a plain-text reply. Remembers earlier messages
      * in the same session.
+     *
+     * <p>
+     * Also gives the model access to whatever tools are exposed by the MCP
+     * servers configured under spring.ai.mcp.client.* (e.g. the sandboxed
+     * Filesystem server) - discovered at connection time, not written here.
      *
      * @param sessionId   identifies the conversation to remember
      * @param userMessage the user's message
@@ -46,7 +56,7 @@ public class RemittanceCopilotService {
                 .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor(), complianceRetrievalAdvisor,
                         MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, sessionId))
-                .tools(exchangeRateTool, countryDataTool)
+                .tools(exchangeRateTool, countryDataTool, mcpClientToolCallbacks)
                 .system(s -> s.param("currentDate", LocalDate.now().toString()))
                 .user(userMessage)
                 .call()
