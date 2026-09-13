@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Ensure mvnw is executable
+        # Git on Windows drops the executable bit; belt-and-suspenders alongside
+        # the `git update-index --chmod=+x mvnw` fix committed to the repo.
+        run: chmod +x mvnw
+
+      - name: Compile
+        run: ./mvnw -B compile test-compile
+
+      - name: Run CI-safe tests
+        # Every other test class is @SpringBootTest, which boots the full Spring
+        # context and calls the embedding model at startup via
+        # ComplianceDocumentIngestionService's CommandLineRunner regardless of
+        # which individual test methods are @EnabledIfEnvironmentVariable-gated.
+        # Both the chat AND embedding providers default to Ollama (application.yaml),
+        # which isn't running on this runner either -- so @SpringBootTest classes
+        # cannot boot here yet. Tracked as EPIC-6's "make @SpringBootTest CI-safe"
+        # story rather than silently assumed to pass.
+        run: ./mvnw -B test -Dtest=ComplianceDocumentIngestionServiceTest
+
+      - name: Package
+        run: ./mvnw -B -DskipTests package

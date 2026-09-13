@@ -1,0 +1,70 @@
+name: Story
+description: A single, sprint-sized unit of work delivering standalone value.
+labels: ["type:story"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        INVEST checklist before filing: Independent, Negotiable, Valuable, Estimable, Small (≤8 pts), Testable.
+        See `docs/adr/` for design context if this story implements or changes an architectural decision.
+  - type: input
+    id: epic
+    attributes:
+      label: Parent epic
+      description: Issue number of the epic this story belongs to (e.g. "#12").
+    validations:
+      required: true
+  - type: textarea
+    id: story
+    attributes:
+      label: User story
+      description: As a [persona], I want to [action], so that [benefit].
+      placeholder: |
+        As a compliance reviewer,
+        I want to see the sanctions-screening outcome as a structured field,
+        so that I can query flagged transfers without reading free-text rationale.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: Acceptance criteria (Given/When/Then)
+      description: One block per criterion. Include happy path, validation, error handling, and any perf/security-relevant behavior.
+      placeholder: |
+        Given a transfer whose sender matches a confirmed sanctions entity,
+        When the copilot evaluates the transaction,
+        Then `RiskAuditReport.status` is REJECTED and `sanctionsHit` is true.
+
+        Given the yente screening service is unreachable,
+        When the copilot evaluates the transaction,
+        Then the outcome is FLAG_MANUAL_REVIEW, never APPROVED (fail-closed).
+    validations:
+      required: true
+  - type: dropdown
+    id: points
+    attributes:
+      label: Story points (Fibonacci)
+      options: ["1", "2", "3", "5", "8", "13 (split before starting)"]
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options: ["Critical", "High", "Medium", "Low"]
+    validations:
+      required: true
+  - type: dropdown
+    id: role
+    attributes:
+      label: Primary role/hat for this story
+      options:
+        - product-owner
+        - architect
+        - backend
+        - security
+        - qa
+        - devops
+        - tech-writer
+    validations:
+      required: true
