@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Compile
+        run: ./mvnw -B compile test-compile
+
+      - name: Run CI-safe tests
+        # Every other test class is @SpringBootTest, which boots the full Spring
+        # context and (per CLAUDE.md) calls the embedding model at startup via
+        # ComplianceDocumentIngestionService's CommandLineRunner regardless of
+        # which individual test methods are @EnabledIfEnvironmentVariable-gated.
+        # Both the chat AND embedding providers default to Ollama (application.yaml),
+        # which isn't running on this runner either -- so @SpringBootTest classes
+        # cannot boot here yet. Tracked as a backlog story (make the full suite
+        # CI-runnable) rather than silently assumed to pass. Until then, only the
+        # one dependency-free class runs by default.
+        run: ./mvnw -B test -Dtest=ComplianceDocumentIngestionServiceTest
+
+      - name: Package
+        run: ./mvnw -B -DskipTests package

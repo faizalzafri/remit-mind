@@ -1,0 +1,34 @@
+name: Epic
+description: A themed body of work spanning multiple stories, tracked against a milestone.
+labels: ["type:epic"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: What capability or outcome this epic delivers, and why it matters for RemitMind as a portfolio product.
+    validations:
+      required: true
+  - type: textarea
+    id: success_criteria
+    attributes:
+      label: Success criteria
+      description: How we know the epic is done — observable outcomes, not a task list.
+    validations:
+      required: true
+  - type: textarea
+    id: stories
+    attributes:
+      label: Known stories (link as they're filed)
+      description: Checklist of story issues under this epic. Update as stories are created/split.
+      placeholder: |
+        - [ ] #0 Story title
+    validations:
+      required: false
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks / open questions
+      description: Anything uncertain enough to need a spike or an ADR before stories can be finalized.
+    validations:
+      required: false
