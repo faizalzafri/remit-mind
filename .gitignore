@@ -31,3 +31,8 @@ build/
 
 ### VS Code ###
 .vscode/
+/baseline-standards.md
+/implementation_plan.md
+/REMITMIND_SPEC.md
+/Spring AI Learning Agent.md
+/docs/
