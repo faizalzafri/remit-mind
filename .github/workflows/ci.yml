@@ -22,6 +22,11 @@ jobs:
           java-version: "21"
           cache: maven
 
+      - name: Ensure mvnw is executable
+        # Git on Windows drops the executable bit; belt-and-suspenders alongside
+        # the `git update-index --chmod=+x mvnw` fix committed to the repo.
+        run: chmod +x mvnw
+
       - name: Compile
         run: ./mvnw -B compile test-compile
 

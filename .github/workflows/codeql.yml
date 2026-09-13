@@ -30,6 +30,9 @@ jobs:
         with:
           languages: java
 
+      - name: Ensure mvnw is executable
+        run: chmod +x mvnw
+
       - name: Build
         run: ./mvnw -B -DskipTests compile
 
