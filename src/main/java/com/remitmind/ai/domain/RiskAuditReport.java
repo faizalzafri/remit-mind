@@ -13,9 +13,8 @@ public record RiskAuditReport(
 ) {
 
     /**
-     * Computes the status/riskLevel/requiredDocuments deterministically from the
-     * corridor limit, instead of asking the model to decide them. Fails closed
-     * (FLAG_MANUAL_REVIEW) when there's no compliance data, never silently APPROVED.
+     * Decides status/riskLevel/requiredDocuments from the corridor limit, not
+     * the model. Fails closed (FLAG_MANUAL_REVIEW) if there's no compliance data.
      */
     public static RiskAuditReport evaluate(double sourceAmount, CountryComplianceInfo compliance) {
         if (compliance == null) {
