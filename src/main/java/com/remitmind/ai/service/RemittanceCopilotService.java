@@ -2,7 +2,11 @@ package com.remitmind.ai.service;
 
 import com.remitmind.ai.config.PromptGuardrailAdvisor;
 import com.remitmind.ai.config.RequestTraceIdAdvisor;
+import com.remitmind.ai.domain.CopilotReply;
 import com.remitmind.ai.domain.CopilotResponse;
+import com.remitmind.ai.domain.CountryComplianceInfo;
+import com.remitmind.ai.domain.RiskAuditReport;
+import com.remitmind.ai.domain.Transaction;
 import java.time.LocalDate;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -63,20 +67,69 @@ public class RemittanceCopilotService {
                 .content();
     }
 
+    // Prompt for parse()'s second call: model writes the rationale only,
+    // Java already decided status/riskLevel. Plain Java string, not the
+    // shared system-prompt.st, since chat() doesn't have these values.
+    private static final String RATIONALE_PROMPT = """
+            You are RemitMind, an AI-powered compliance-aware remittance copilot.
+
+            A compliance decision has already been computed for this transfer:
+            status=%s, riskLevel=%s, requiredDocuments=%s, based on a corridor
+            limit of %.2f for %s.
+
+            Do not change this decision or assert a different status. Your only
+            job is to write a `rationale` explaining it clearly, referencing the
+            limit, and a short conversational `chatResponse` for the user.
+
+            If a "Relevant compliance context" section appears below, factor it
+            into your rationale -- including any documented exceptions (e.g.
+            verified NGOs, disaster relief) or stricter guidance that add nuance
+            to the decision above. If that context asks for something stricter
+            than the decision above (e.g. extra documentation above a lower
+            threshold), say so plainly in the rationale instead of leaving it
+            out -- the decision itself still stands, but the rationale must not
+            contradict or omit what the retrieved context says. If no such
+            context is present, or it does not address the situation, rely on
+            the corridor limit alone.
+
+            Today's date is %s.
+            """;
+
     /**
      * Sends a message and returns the extracted transfer plus its compliance
      * check. Does not remember earlier messages.
+     *
+     * <p>
+     * Java decides status/riskLevel (see {@link RiskAuditReport#evaluate}), not
+     * the model. The model only extracts the transaction and writes the
+     * rationale.
      *
      * @param userMessage the user's transfer request
      * @return the extracted transfer and its compliance check
      */
     public CopilotResponse parse(String userMessage) {
-        return chatClient.prompt()
-                .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor(), complianceRetrievalAdvisor)
-                .tools(exchangeRateTool, countryDataTool)
+        Transaction transaction = chatClient.prompt()
+                .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor())
                 .system(s -> s.param("currentDate", LocalDate.now().toString()))
                 .user(userMessage)
                 .call()
-                .entity(CopilotResponse.class);
+                .entity(Transaction.class);
+
+        CountryComplianceInfo compliance = countryDataTool.getCountryCompliance(transaction.destinationCountry());
+        RiskAuditReport baseline = RiskAuditReport.evaluate(transaction.sourceAmount(), compliance);
+
+        CopilotReply reply = chatClient.prompt()
+                .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor(), complianceRetrievalAdvisor)
+                .tools(exchangeRateTool)
+                .system(RATIONALE_PROMPT.formatted(baseline.status(), baseline.riskLevel(),
+                        baseline.requiredDocuments(), compliance.maxTransferLimit(),
+                        transaction.destinationCountry(), LocalDate.now()))
+                .user(userMessage)
+                .call()
+                .entity(CopilotReply.class);
+
+        RiskAuditReport auditReport = new RiskAuditReport(
+                baseline.status(), baseline.riskLevel(), reply.rationale(), baseline.requiredDocuments());
+        return new CopilotResponse(reply.chatResponse(), transaction, auditReport);
     }
 }
