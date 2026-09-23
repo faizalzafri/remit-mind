@@ -31,8 +31,8 @@ services:
     environment:
       YENTE_INDEX_TYPE: "elasticsearch"
       YENTE_INDEX_URL: http://yente-index:9200
-      # Free/non-commercial tier. See docs/research/buy-vs-build.md for the
-      # commercial-use licensing caveat before ever pointing this at real data.
+      # Free/non-commercial tier only. Screening real customer data would
+      # need a paid OpenSanctions license.
       YENTE_MANIFEST: /app/manifests/civic.yml
       OPENSANCTIONS_DELIVERY_TOKEN: "${YENTE_BULK_KEY}"
     healthcheck:
