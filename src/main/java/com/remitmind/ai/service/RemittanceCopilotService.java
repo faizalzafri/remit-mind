@@ -29,17 +29,20 @@ public class RemittanceCopilotService {
     private final CountryDataTool countryDataTool;
     private final Advisor complianceRetrievalAdvisor;
     private final ToolCallbackProvider mcpClientToolCallbacks;
+    private final SanctionsScreeningService sanctionsScreeningService;
 
     public RemittanceCopilotService(ChatClient chatClient, ChatMemory chatMemory,
                                     ExchangeRateTool exchangeRateTool, CountryDataTool countryDataTool,
                                     Advisor complianceRetrievalAdvisor,
-                                    @Qualifier("mcpToolCallbacks") ToolCallbackProvider mcpClientToolCallbacks) {
+                                    @Qualifier("mcpToolCallbacks") ToolCallbackProvider mcpClientToolCallbacks,
+                                    SanctionsScreeningService sanctionsScreeningService) {
         this.chatClient = chatClient;
         this.chatMemory = chatMemory;
         this.exchangeRateTool = exchangeRateTool;
         this.countryDataTool = countryDataTool;
         this.complianceRetrievalAdvisor = complianceRetrievalAdvisor;
         this.mcpClientToolCallbacks = mcpClientToolCallbacks;
+        this.sanctionsScreeningService = sanctionsScreeningService;
     }
 
     /**
@@ -114,6 +117,13 @@ public class RemittanceCopilotService {
                 .user(userMessage)
                 .call()
                 .entity(Transaction.class);
+
+        // Mandatory Java call, not a @Tool. Result is only logged for now (#41 uses it).
+        for (String name : new String[] {transaction.senderName(), transaction.receiverName()}) {
+            if (name != null && !name.isBlank()) {
+                sanctionsScreeningService.screen(name);
+            }
+        }
 
         CountryComplianceInfo compliance = countryDataTool.getCountryCompliance(transaction.destinationCountry());
         RiskAuditReport baseline = RiskAuditReport.evaluate(transaction.sourceAmount(), compliance);

@@ -38,6 +38,9 @@ spring:
                 - "-y"
                 - "@modelcontextprotocol/server-filesystem"
                 - "${MCP_FILESYSTEM_ROOT:./mcp-filesystem-sandbox}"
+remitmind:
+  yente:
+    url: ${YENTE_URL:http://localhost:8000}
 management:
   endpoints:
     web:
