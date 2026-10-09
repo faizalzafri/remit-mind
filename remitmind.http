@@ -1,0 +1,208 @@
+# RemitMind - manual API checks for completed stories (IntelliJ HTTP Client).
+#
+# Setup:
+#   - yente:  docker compose up -d   (needs YENTE_BULK_KEY; first start indexes data, takes a few minutes)
+#   - app:    ./mvnw spring-boot:run (AI_CHAT_PROVIDER=ollama or google-genai)
+#
+# Every /parse request screens names via yente (story #38). If yente is down,
+# every /parse returns FLAG_MANUAL_REVIEW/HIGH by design (story #39), so run the
+# #17/#18/#38 sections with yente UP and the #39 section with yente DOWN.
+#
+# Corridor limits: North America and Europe = 5000, everyone else = 2000.
+# Requests go through the chat model, so allow up to a few minutes each on Ollama.
+
+@host = http://localhost:8080
+@yente = http://localhost:8000
+
+
+### =====================================================================
+### Story #37 - self-hosted yente via docker-compose (call yente directly)
+### =====================================================================
+
+### #37 Scenario: yente is up and healthy -> {"status":"ok"}
+GET {{yente}}/healthz
+
+> {%
+    client.test("yente healthy", () => client.assert(response.status === 200));
+%}
+
+### #37 Scenario: yente lists its loaded datasets
+GET {{yente}}/catalog
+
+### #37 Scenario: a known sanctioned person is found in the "default" dataset
+POST {{yente}}/match/default
+Content-Type: application/json
+
+{"queries": {"q": {"schema": "LegalEntity", "properties": {"name": ["Viktor Bout"]}}}}
+
+> {%
+    client.test("Viktor Bout is a match", () => {
+        client.assert(response.body.responses.q.results.some(r => r.match === true));
+    });
+%}
+
+
+### =====================================================================
+### Story #17 - Java decides status/riskLevel from the corridor limit (yente UP)
+### =====================================================================
+
+### #17 Scenario: amount exactly at the limit (Mexico, 5000) -> APPROVED / LOW, no documents
+# @timeout 300
+POST {{host}}/api/copilot/parse
+Content-Type: application/json
+
+{"message": "John Smith wants to send 5000 USD to Ana Torres in Mexico for family support"}
+
+> {%
+    client.test("at limit is approved", () => {
+        client.assert(response.body.auditReport.status === "APPROVED");
+        client.assert(response.body.auditReport.riskLevel === "LOW");
+        client.assert(response.body.auditReport.requiredDocuments.length === 0);
+    });
+%}
+
+### #17 Scenario: amount over the limit (Mexico, 6000) -> FLAG_MANUAL_REVIEW / MEDIUM with documents
+# Run it a few times: status/riskLevel must never change (determinism).
+# @timeout 300
+POST {{host}}/api/copilot/parse
+Content-Type: application/json
+
+{"message": "John Smith wants to send 6000 USD to Ana Torres in Mexico for family support"}
+
+> {%
+    client.test("over limit is flagged", () => {
+        client.assert(response.body.auditReport.status === "FLAG_MANUAL_REVIEW");
+        client.assert(response.body.auditReport.riskLevel === "MEDIUM");
+        const docs = response.body.auditReport.requiredDocuments;
+        client.assert(docs.includes("Proof of Funds") && docs.includes("ID Card"));
+    });
+%}
+
+### #17 Scenario: high-scrutiny corridor (Nigeria, 2000 limit), 2500 -> FLAG_MANUAL_REVIEW / MEDIUM
+# @timeout 300
+POST {{host}}/api/copilot/parse
+Content-Type: application/json
+
+{"message": "John Smith wants to send 2500 USD to Chidi Okafor in Nigeria for school fees"}
+
+> {%
+    client.test("Nigeria over 2000 is flagged", () => {
+        client.assert(response.body.auditReport.status === "FLAG_MANUAL_REVIEW");
+        client.assert(response.body.auditReport.riskLevel === "MEDIUM");
+    });
+%}
+
+### #17 Scenario: country not in reference data (Peru) -> rest-of-world 2000 limit, 1500 is APPROVED
+# The "no compliance data" fail-closed path can't be reached over HTTP
+# (unknown countries get rest-of-world defaults); RiskAuditReportTest covers it.
+# @timeout 300
+POST {{host}}/api/copilot/parse
+Content-Type: application/json
+
+{"message": "John Smith wants to send 1500 USD to Lucia Quispe in Peru for family support"}
+
+> {%
+    client.test("unknown country uses 2000 default", () => {
+        client.assert(response.body.auditReport.status === "APPROVED");
+    });
+%}
+
+
+### =====================================================================
+### Story #18 - model writes the rationale only, never a different decision (yente UP)
+### Rationale is model text: read it and judge, the checks only cover the decision.
+### =====================================================================
+
+### #18 Scenario: flagged transfer -> rationale explains the flag and never says "approved"
+# @timeout 300
+POST {{host}}/api/copilot/parse
+Content-Type: application/json
+
+{"message": "John Smith wants to send 7000 USD to Ana Torres in Mexico for a house deposit"}
+
+> {%
+    client.test("decision stays Java's", () => {
+        client.assert(response.body.auditReport.status === "FLAG_MANUAL_REVIEW");
+        client.assert(!/\bapproved\b/i.test(response.body.auditReport.rationale), "rationale claims approval");
+    });
+%}
+
+### #18 Scenario: retrieved rulebook has an exception (Nigeria NGO disaster relief)
+# Expect: still flagged by the 2000 limit; rationale should mention the NGO exception.
+# @timeout 300
+POST {{host}}/api/copilot/parse
+Content-Type: application/json
+
+{"message": "Relief Aid International, a verified NGO, wants to send 3000 USD to Chidi Okafor in Nigeria for registered disaster relief operations"}
+
+> {%
+    client.test("exception doesn't change the decision", () => {
+        client.assert(response.body.auditReport.status === "FLAG_MANUAL_REVIEW");
+    });
+%}
+
+### #18 Scenario: no rulebook context for the corridor (Japan) -> rationale relies on the limit alone
+# @timeout 300
+POST {{host}}/api/copilot/parse
+Content-Type: application/json
+
+{"message": "John Smith wants to send 500 USD to Kenji Sato in Japan for a birthday gift"}
+
+> {%
+    client.test("within limit is approved", () => {
+        client.assert(response.body.auditReport.status === "APPROVED");
+    });
+%}
+
+
+### =====================================================================
+### Story #38 - sanctions screening always runs in Java (yente UP)
+### The screening result isn't in the response yet (#40/#41). Check the app log for:
+###   "Sanctions screening for '<name>': <match or no match>"
+### Note: name-only screening also flags common names (e.g. John Smith) - known, see #41.
+### =====================================================================
+
+### #38 Scenario: sanctioned sender -> log shows a match for Viktor Bout
+# @timeout 300
+POST {{host}}/api/copilot/parse
+Content-Type: application/json
+
+{"message": "Viktor Bout wants to send 500 USD to Ana Torres in Mexico for family support"}
+
+### #38 Scenario: sanctioned receiver -> log shows a match for the receiver
+# @timeout 300
+POST {{host}}/api/copilot/parse
+Content-Type: application/json
+
+{"message": "Ana Torres wants to send 500 USD to Viktor Bout in Mexico for consulting fees"}
+
+### #38 Scenario: no sender name -> only the receiver is screened (blank names are skipped)
+# @timeout 300
+POST {{host}}/api/copilot/parse
+Content-Type: application/json
+
+{"message": "Send 300 USD to Ana Torres in Mexico for family support"}
+
+
+### =====================================================================
+### Story #39 - fail closed when yente is unreachable (yente DOWN)
+### Either `docker compose stop yente`, or start the app with
+### YENTE_URL=http://localhost:8999 (nothing listens there).
+### Log shows: "Sanctions screening unavailable for '<name>'"
+### =====================================================================
+
+### #39 Scenario: small amount that would normally be APPROVED -> FLAG_MANUAL_REVIEW / HIGH, HTTP 200 (not 500)
+# Rationale should say screening was unavailable (small Ollama models sometimes blame the limit instead).
+# @timeout 300
+POST {{host}}/api/copilot/parse
+Content-Type: application/json
+
+{"message": "John Smith wants to send 100 USD to Ana Torres in Mexico for family support"}
+
+> {%
+    client.test("fails closed, never approved", () => {
+        client.assert(response.status === 200);
+        client.assert(response.body.auditReport.status === "FLAG_MANUAL_REVIEW");
+        client.assert(response.body.auditReport.riskLevel === "HIGH");
+    });
+%}
