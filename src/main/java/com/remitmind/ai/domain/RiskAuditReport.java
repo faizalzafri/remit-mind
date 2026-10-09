@@ -16,7 +16,15 @@ public record RiskAuditReport(
      * Decides status/riskLevel/requiredDocuments from the corridor limit, not
      * the model. Fails closed (FLAG_MANUAL_REVIEW) if there's no compliance data.
      */
-    public static RiskAuditReport evaluate(double sourceAmount, CountryComplianceInfo compliance) {
+    public static RiskAuditReport evaluate(double sourceAmount, CountryComplianceInfo compliance, ScreeningOutcome screening) {
+        if (screening == ScreeningOutcome.UNAVAILABLE) {
+            return new RiskAuditReport(
+                    "FLAG_MANUAL_REVIEW",
+                    "HIGH",
+                    "Sanctions screening was unavailable; flagged for manual review",
+                    List.of("Proof of Funds", "ID Card")
+            );
+        }
         if (compliance == null) {
             return new RiskAuditReport(
                     "FLAG_MANUAL_REVIEW",

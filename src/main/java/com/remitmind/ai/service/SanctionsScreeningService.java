@@ -3,6 +3,8 @@ package com.remitmind.ai.service;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import com.remitmind.ai.domain.ScreeningOutcome;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,19 +12,20 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 /**
  * Screens names against sanctions/PEP lists via a self-hosted yente instance.
  * Called directly from Java, never exposed as a @Tool, so the model can't skip it.
  */
 @Service
-class SanctionsScreeningService {
+public class SanctionsScreeningService {
 
     private static final Logger logger = LoggerFactory.getLogger(SanctionsScreeningService.class);
     private final RestClient restClient;
 
     @Autowired
-    SanctionsScreeningService(@Value("${remitmind.yente.url}") String yenteUrl) {
+    public SanctionsScreeningService(@Value("${remitmind.yente.url}") String yenteUrl) {
         this(RestClient.builder().requestFactory(timeouts()), yenteUrl);
     }
 
@@ -39,31 +42,36 @@ class SanctionsScreeningService {
     }
 
     /** One yente match candidate. {@code match} is true when yente's own threshold is passed. */
-    record Candidate(String id, String caption, double score, boolean match) {}
+    private record Candidate(String id, String caption, double score, boolean match) {}
 
     private record QueryResponse(List<Candidate> results) {}
 
     private record MatchResponse(Map<String, QueryResponse> responses) {}
 
     /**
-     * Screens one name. Returns the top candidate yente marks as a match, or empty.
-     * Exceptions are not caught: an unreachable yente must not look like "no hit".
+     * Screens one name. UNAVAILABLE when yente is down or times  out, so a
+     * failed check is never mistaken for CLEAR
      */
-    Optional<Candidate> screen(String name) {
+    ScreeningOutcome screen(String name) {
         Map<String, Object> body = Map.of("queries", Map.of("q", Map.of(
                 "schema", "LegalEntity",
                 "properties", Map.of("name", List.of(name)))));
 
-        MatchResponse response = restClient.post()
-                .uri("/match/default")
-                .body(body)
-                .retrieve()
-                .body(MatchResponse.class);
+        try {
+            MatchResponse response = restClient.post()
+                    .uri("/match/default")
+                    .body(body)
+                    .retrieve()
+                    .body(MatchResponse.class);
 
-        Optional<Candidate> hit = response.responses().get("q").results().stream()
-                .filter(Candidate::match)
-                .findFirst();
-        logger.info("Sanctions screening for '{}': {}", name, hit.map(Candidate::caption).orElse("no match"));
-        return hit;
+            Optional<Candidate> hit = response.responses().get("q").results().stream()
+                    .filter(Candidate::match)
+                    .findFirst();
+            logger.info("Sanctions screening for '{}': {}", name, hit.map(Candidate::caption).orElse("no match"));
+            return hit.isPresent() ? ScreeningOutcome.HIT : ScreeningOutcome.CLEAR;
+        } catch (RestClientException e) {
+            logger.warn("Sanctions screening unavailable for '{}': {}", name, e.getMessage());
+            return ScreeningOutcome.UNAVAILABLE;
+        }
     }
 }

@@ -2,11 +2,8 @@ package com.remitmind.ai.service;
 
 import com.remitmind.ai.config.PromptGuardrailAdvisor;
 import com.remitmind.ai.config.RequestTraceIdAdvisor;
-import com.remitmind.ai.domain.CopilotReply;
-import com.remitmind.ai.domain.CopilotResponse;
-import com.remitmind.ai.domain.CountryComplianceInfo;
-import com.remitmind.ai.domain.RiskAuditReport;
-import com.remitmind.ai.domain.Transaction;
+import com.remitmind.ai.domain.*;
+
 import java.time.LocalDate;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -77,12 +74,13 @@ public class RemittanceCopilotService {
             You are RemitMind, an AI-powered compliance-aware remittance copilot.
 
             A compliance decision has already been computed for this transfer:
-            status=%s, riskLevel=%s, requiredDocuments=%s, based on a corridor
-            limit of %.2f for %s.
+            status=%s, riskLevel=%s, requiredDocuments=%s, reason: %s
 
             Do not change this decision or assert a different status. Your only
-            job is to write a `rationale` explaining it clearly, referencing the
-            limit, and a short conversational `chatResponse` for the user.
+            job is to write a `rationale` explaining the reason above clearly,
+            and a short conversational `chatResponse` for the user. Do not
+            invent a different reason: mention the corridor limit only if the
+            reason above is about the amount.
 
             If a "Relevant compliance context" section appears below, factor it
             into your rationale -- including any documented exceptions (e.g.
@@ -118,22 +116,25 @@ public class RemittanceCopilotService {
                 .call()
                 .entity(Transaction.class);
 
-        // Mandatory Java call, not a @Tool. Result is only logged for now (#41 uses it).
+        // Mandatory Java call, not a @Tool. Worst outcome across sender and receiver wins.
+        ScreeningOutcome screening = ScreeningOutcome.CLEAR;
         for (String name : new String[] {transaction.senderName(), transaction.receiverName()}) {
             if (name != null && !name.isBlank()) {
-                sanctionsScreeningService.screen(name);
+                ScreeningOutcome outcome = sanctionsScreeningService.screen(name);
+                if (outcome.compareTo(screening) > 0) {
+                    screening = outcome;
+                }
             }
         }
 
         CountryComplianceInfo compliance = countryDataTool.getCountryCompliance(transaction.destinationCountry());
-        RiskAuditReport baseline = RiskAuditReport.evaluate(transaction.sourceAmount(), compliance);
+        RiskAuditReport baseline = RiskAuditReport.evaluate(transaction.sourceAmount(), compliance, screening);
 
         CopilotReply reply = chatClient.prompt()
                 .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor(), complianceRetrievalAdvisor)
                 .tools(exchangeRateTool)
                 .system(RATIONALE_PROMPT.formatted(baseline.status(), baseline.riskLevel(),
-                        baseline.requiredDocuments(), compliance.maxTransferLimit(),
-                        transaction.destinationCountry(), LocalDate.now()))
+                        baseline.requiredDocuments(), baseline.rationale(), LocalDate.now()))
                 .user(userMessage)
                 .call()
                 .entity(CopilotReply.class);
