@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import com.remitmind.ai.domain.ScreeningOutcome;
+import com.remitmind.ai.domain.ScreeningResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,7 +53,7 @@ public class SanctionsScreeningService {
      * Screens one name. UNAVAILABLE when yente is down or times  out, so a
      * failed check is never mistaken for CLEAR
      */
-    ScreeningOutcome screen(String name) {
+    ScreeningResult screen(String name) {
         Map<String, Object> body = Map.of("queries", Map.of("q", Map.of(
                 "schema", "LegalEntity",
                 "properties", Map.of("name", List.of(name)))));
@@ -68,10 +69,11 @@ public class SanctionsScreeningService {
                     .filter(Candidate::match)
                     .findFirst();
             logger.info("Sanctions screening for '{}': {}", name, hit.map(Candidate::caption).orElse("no match"));
-            return hit.isPresent() ? ScreeningOutcome.HIT : ScreeningOutcome.CLEAR;
+            return new ScreeningResult(hit.isPresent() ? ScreeningOutcome.HIT : ScreeningOutcome.CLEAR,
+                    hit.map(Candidate::caption).orElse(null));
         } catch (RestClientException e) {
             logger.warn("Sanctions screening unavailable for '{}': {}", name, e.getMessage());
-            return ScreeningOutcome.UNAVAILABLE;
+            return new ScreeningResult(ScreeningOutcome.UNAVAILABLE, null);
         }
     }
 }

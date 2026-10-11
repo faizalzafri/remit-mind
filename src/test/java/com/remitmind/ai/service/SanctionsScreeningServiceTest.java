@@ -6,6 +6,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.*;
 
 import com.remitmind.ai.domain.ScreeningOutcome;
+import com.remitmind.ai.domain.ScreeningResult;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -32,12 +33,12 @@ class SanctionsScreeningServiceTest {
                 .andExpect(jsonPath("$.queries.q.properties.name[0]").value("Viktor Bout"))
                 .andRespond(withSuccess(YENTE_REPLY.formatted("true"), MediaType.APPLICATION_JSON));
 
-        assertThat(service.screen("Viktor Bout")).isEqualTo(ScreeningOutcome.HIT);
+        assertThat(service.screen("Viktor Bout")).isEqualTo(new ScreeningResult(ScreeningOutcome.HIT, "Viktor Bout"));
         server.verify();
     }
 
     @Test
-    void returnsEmptyWhenNoCandidateIsAMatch() {
+    void returnsClearWhenNoCandidateIsAMatch() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         SanctionsScreeningService service = new SanctionsScreeningService(builder, "http://yente");
@@ -45,7 +46,7 @@ class SanctionsScreeningServiceTest {
         server.expect(requestTo("http://yente/match/default"))
                 .andRespond(withSuccess(YENTE_REPLY.formatted("false"), MediaType.APPLICATION_JSON));
 
-        assertThat(service.screen("Maria Lopez")).isEqualTo(ScreeningOutcome.CLEAR);
+        assertThat(service.screen("Maria Lopez")).isEqualTo(ScreeningResult.CLEAR);
     }
 
     @Test
@@ -56,7 +57,7 @@ class SanctionsScreeningServiceTest {
 
         server.expect(requestTo("http://yente/match/default")).andRespond(withServerError());
 
-        assertThat(service.screen("Viktor Bout")).isEqualTo(ScreeningOutcome.UNAVAILABLE);
+        assertThat(service.screen("Viktor Bout")).isEqualTo(new ScreeningResult(ScreeningOutcome.UNAVAILABLE, null));
     }
 
     @Test
@@ -68,7 +69,7 @@ class SanctionsScreeningServiceTest {
         server.expect(requestTo("http://yente/match/default"))
                 .andRespond(withException(new SocketTimeoutException("Read timed out")));
 
-        assertThat(service.screen("Viktor Bout")).isEqualTo(ScreeningOutcome.UNAVAILABLE);
+        assertThat(service.screen("Viktor Bout")).isEqualTo(new ScreeningResult(ScreeningOutcome.UNAVAILABLE, null));
     }
 
 }

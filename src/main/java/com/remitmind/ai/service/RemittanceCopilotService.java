@@ -117,12 +117,12 @@ public class RemittanceCopilotService {
                 .entity(Transaction.class);
 
         // Mandatory Java call, not a @Tool. Worst outcome across sender and receiver wins.
-        ScreeningOutcome screening = ScreeningOutcome.CLEAR;
+        ScreeningResult screening = ScreeningResult.CLEAR;
         for (String name : new String[] {transaction.senderName(), transaction.receiverName()}) {
             if (name != null && !name.isBlank()) {
-                ScreeningOutcome outcome = sanctionsScreeningService.screen(name);
-                if (outcome.compareTo(screening) > 0) {
-                    screening = outcome;
+                ScreeningResult result = sanctionsScreeningService.screen(name);
+                if (result.screeningOutcome().compareTo(screening.screeningOutcome()) > 0) {
+                    screening = result;
                 }
             }
         }
@@ -140,7 +140,8 @@ public class RemittanceCopilotService {
                 .entity(CopilotReply.class);
 
         RiskAuditReport auditReport = new RiskAuditReport(
-                baseline.status(), baseline.riskLevel(), reply.rationale(), baseline.requiredDocuments());
+                baseline.status(), baseline.riskLevel(), reply.rationale(), baseline.requiredDocuments(),
+                baseline.sanctionsHit(), baseline.matchedEntity());
         return new CopilotResponse(reply.chatResponse(), transaction, auditReport);
     }
 }
