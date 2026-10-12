@@ -27,12 +27,14 @@ public class RemittanceCopilotService {
     private final Advisor complianceRetrievalAdvisor;
     private final ToolCallbackProvider mcpClientToolCallbacks;
     private final SanctionsScreeningService sanctionsScreeningService;
+    private final TransferDecisionRepository transferDecisionRepository;
 
     public RemittanceCopilotService(ChatClient chatClient, ChatMemory chatMemory,
                                     ExchangeRateTool exchangeRateTool, CountryDataTool countryDataTool,
                                     Advisor complianceRetrievalAdvisor,
                                     @Qualifier("mcpToolCallbacks") ToolCallbackProvider mcpClientToolCallbacks,
-                                    SanctionsScreeningService sanctionsScreeningService) {
+                                    SanctionsScreeningService sanctionsScreeningService,
+                                    TransferDecisionRepository transferDecisionRepository) {
         this.chatClient = chatClient;
         this.chatMemory = chatMemory;
         this.exchangeRateTool = exchangeRateTool;
@@ -40,6 +42,7 @@ public class RemittanceCopilotService {
         this.complianceRetrievalAdvisor = complianceRetrievalAdvisor;
         this.mcpClientToolCallbacks = mcpClientToolCallbacks;
         this.sanctionsScreeningService = sanctionsScreeningService;
+        this.transferDecisionRepository = transferDecisionRepository;
     }
 
     /**
@@ -142,6 +145,8 @@ public class RemittanceCopilotService {
         RiskAuditReport auditReport = new RiskAuditReport(
                 baseline.status(), baseline.riskLevel(), reply.rationale(), baseline.requiredDocuments(),
                 baseline.sanctionsHit(), baseline.matchedEntity());
+        // If this fails the request fails: a decision we can't record isn't returned.
+        transferDecisionRepository.save(new TransferDecision(transaction, auditReport));
         return new CopilotResponse(reply.chatResponse(), transaction, auditReport);
     }
 }

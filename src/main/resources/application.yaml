@@ -1,6 +1,14 @@
 spring:
   application:
     name: remit-mind
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/remitmind}
+    username: ${DB_USER:remitmind}
+    password: ${DB_PASSWORD:remitmind}
+  jpa:
+    hibernate:
+      ddl-auto: validate # Flyway owns the schema; Hibernate only checks it matches
+    open-in-view: false
   ai:
     model:
       chat: ${AI_CHAT_PROVIDER:ollama} # google-genai or ollama - selects which chat model auto-configures
