@@ -39,7 +39,9 @@ jobs:
         # which isn't running on this runner either -- so @SpringBootTest classes
         # cannot boot here yet. Tracked as EPIC-6's "make @SpringBootTest CI-safe"
         # story rather than silently assumed to pass.
-        run: ./mvnw -B test -Dtest=ComplianceDocumentIngestionServiceTest
+        # TransferDecisionRepositoryTest is a @DataJpaTest slice (no AI beans) on a
+        # Testcontainers Postgres; the runner has Docker.
+        run: ./mvnw -B test -Dtest=ComplianceDocumentIngestionServiceTest,TransferDecisionRepositoryTest
 
       - name: Package
         run: ./mvnw -B -DskipTests package
