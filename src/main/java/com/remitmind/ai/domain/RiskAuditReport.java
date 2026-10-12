@@ -16,13 +16,22 @@ public record RiskAuditReport(
 
     /**
      * Decides status/riskLevel/requiredDocuments from the corridor limit, not
-     * the model. Fails closed (FLAG_MANUAL_REVIEW) if there's no compliance data
+     * the model. Rejects outright on a sanctions hit. Fails closed (FLAG_MANUAL_REVIEW) if there's no compliance data
      * or sanctions screening was unavailable.
      */
     public static RiskAuditReport evaluate(double sourceAmount, CountryComplianceInfo compliance,
                                            ScreeningResult screening) {
         boolean hit = screening.screeningOutcome() == ScreeningOutcome.HIT;
         String matchedEntity = screening.matchedEntity();
+
+        if (hit) {
+            return new RiskAuditReport(
+                    "REJECTED",
+                    "HIGH",
+                    "Sanctions screening matched %s; transfer blocked.".formatted(matchedEntity),
+                    List.of(),
+                    true, matchedEntity);
+        }
 
         if (screening.screeningOutcome() == ScreeningOutcome.UNAVAILABLE) {
             return new RiskAuditReport(

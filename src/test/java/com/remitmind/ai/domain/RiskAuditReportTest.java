@@ -72,7 +72,7 @@ class RiskAuditReportTest {
     }
 
     @Test
-    void recordsSanctionsHitAndMatchedEntity() {
+    void rejectsOnSanctionsHit() {
         // Given screening matched a sanctioned entity
 
         // When evaluated
@@ -82,6 +82,8 @@ class RiskAuditReportTest {
         // Then the hit is recorded as structured fields
         assertThat(report.sanctionsHit()).isTrue();
         assertThat(report.matchedEntity()).isEqualTo("Viktor Anatolijevitch BOUT");
+        assertThat(report.status()).isEqualTo("REJECTED");
+        assertThat(report.riskLevel()).isEqualTo("HIGH");
     }
 
     @Test
