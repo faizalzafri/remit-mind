@@ -130,7 +130,10 @@ public class RemittanceCopilotService {
             }
         }
 
-        CountryComplianceInfo compliance = countryDataTool.getCountryCompliance(transaction.destinationCountry());
+        // No country means no corridor limit: pass null so evaluate() flags it for manual review.
+        String country = transaction.destinationCountry();
+        CountryComplianceInfo compliance = country == null || country.isBlank()
+                ? null : countryDataTool.getCountryCompliance(country);
         RiskAuditReport baseline = RiskAuditReport.evaluate(transaction.sourceAmount(), compliance, screening);
 
         CopilotReply reply = chatClient.prompt()

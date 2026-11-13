@@ -4,7 +4,11 @@ import com.remitmind.ai.domain.CopilotResponse;
 import com.remitmind.ai.service.RemittanceCopilotService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -45,11 +49,21 @@ public class RemittanceController {
     }
 
     /**
+     * A message blocked by PromptGuardrailAdvisor is a bad request, not a server error.
+     */
+    @ExceptionHandler(SecurityException.class)
+    public ProblemDetail blocked(SecurityException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
+    /**
      * Request body for both endpoints.
      */
     public record ChatRequest(
             @NotBlank(message = "Message must not be blank")
+            @Size(max = 2000, message = "Message must be at most 2000 characters")
             String message,
+            @Size(max = 100, message = "sessionId must be at most 100 characters")
             String sessionId
     ) {}
 
