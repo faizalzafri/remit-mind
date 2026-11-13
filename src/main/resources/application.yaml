@@ -49,6 +49,8 @@ spring:
 remitmind:
   yente:
     url: ${YENTE_URL:http://localhost:8000}
+  presidio:
+    url: ${PRESIDIO_URL:http://localhost:5002}
 management:
   endpoints:
     web:

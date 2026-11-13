@@ -68,11 +68,12 @@ public class SanctionsScreeningService {
             Optional<Candidate> hit = response.responses().get("q").results().stream()
                     .filter(Candidate::match)
                     .findFirst();
-            logger.info("Sanctions screening for '{}': {}", name, hit.map(Candidate::caption).orElse("no match"));
+            logger.info("Sanctions screening: {}", hit.isPresent() ? "HIT" : "CLEAR");
             return new ScreeningResult(hit.isPresent() ? ScreeningOutcome.HIT : ScreeningOutcome.CLEAR,
                     hit.map(Candidate::caption).orElse(null));
         } catch (RestClientException e) {
-            logger.warn("Sanctions screening unavailable for '{}': {}", name, e.getMessage());
+            // Type only: e.getMessage() can carry yente's error body, which may echo the name.
+            logger.warn("Sanctions screening unavailable: {}", e.getClass().getSimpleName());
             return new ScreeningResult(ScreeningOutcome.UNAVAILABLE, null);
         }
     }

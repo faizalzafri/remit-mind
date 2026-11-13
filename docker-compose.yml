@@ -54,6 +54,12 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
+  presidio-analyzer:
+    image: mcr.microsoft.com/presidio-analyzer:2.2.362
+    container_name: presidio-analyzer
+    ports:
+      - "127.0.0.1:5002:3000"
+
 volumes:
   yente-index-data:
   postgres-data:

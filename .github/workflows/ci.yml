@@ -42,7 +42,7 @@ jobs:
         # RiskAuditReportTest is plain JUnit; RemittanceControllerTest is a @WebMvcTest
         # slice with the service mocked. TransferDecisionRepositoryTest is a @DataJpaTest slice (no AI beans) on a
         # Testcontainers Postgres; the runner has Docker.
-        run: ./mvnw -B test -Dtest=ComplianceDocumentIngestionServiceTest,TransferDecisionRepositoryTest,RiskAuditReportTest,RemittanceControllerTest
+        run: ./mvnw -B test -Dtest=ComplianceDocumentIngestionServiceTest,TransferDecisionRepositoryTest,RiskAuditReportTest,RemittanceControllerTest,PiiRedactorTest,SanctionsScreeningServiceTest
 
       - name: Package
         run: ./mvnw -B -DskipTests package
