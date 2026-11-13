@@ -97,4 +97,28 @@ class RiskAuditReportTest {
         assertThat(report.sanctionsHit()).isFalse();
         assertThat(report.matchedEntity()).isNull();
     }
+
+    @Test
+    void failCloseWhenAmountMissing() {
+        // Given the model couldn't extract an amount
+
+        // When evaluated
+        RiskAuditReport report = RiskAuditReport.evaluate(null, MEXICO, ScreeningResult.CLEAR);
+
+        // Then it's flagged, never approved
+        assertThat(report.status()).isEqualTo("FLAG_MANUAL_REVIEW");
+        assertThat(report.riskLevel()).isEqualTo("HIGH");
+    }
+
+    @Test
+    void failCloseWhenAmountNotPositive() {
+        // Given a zero amount
+
+        // When evaluated
+        RiskAuditReport report = RiskAuditReport.evaluate(0.0, MEXICO, ScreeningResult.CLEAR);
+
+        // Then it's flagged, never approved
+        assertThat(report.status()).isEqualTo("FLAG_MANUAL_REVIEW");
+    }
+
 }

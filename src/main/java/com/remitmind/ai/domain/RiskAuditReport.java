@@ -17,9 +17,9 @@ public record RiskAuditReport(
     /**
      * Decides status/riskLevel/requiredDocuments from the corridor limit, not
      * the model. Rejects outright on a sanctions hit. Fails closed (FLAG_MANUAL_REVIEW) if there's no compliance data
-     * or sanctions screening was unavailable.
+     * or sanctions screening was unavailable. Missing or non-positive amount is flagged for manual review.
      */
-    public static RiskAuditReport evaluate(double sourceAmount, CountryComplianceInfo compliance,
+    public static RiskAuditReport evaluate(Double sourceAmount, CountryComplianceInfo compliance,
                                            ScreeningResult screening) {
         boolean hit = screening.screeningOutcome() == ScreeningOutcome.HIT;
         String matchedEntity = screening.matchedEntity();
@@ -41,6 +41,16 @@ public record RiskAuditReport(
                     List.of("Proof of Funds", "ID Card"),
                     hit, matchedEntity);
         }
+
+        if (sourceAmount == null || sourceAmount <= 0) {
+            return new RiskAuditReport(
+                    "FLAG_MANUAL_REVIEW",
+                    "HIGH",
+                    "No valid transfer amount could be read from the request; flagged for manual review.",
+                    List.of("Proof of Funds", "ID Card"),
+                    hit, matchedEntity);
+        }
+
         if (compliance == null) {
             return new RiskAuditReport(
                     "FLAG_MANUAL_REVIEW",
