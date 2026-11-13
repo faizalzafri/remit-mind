@@ -28,13 +28,14 @@ public class RemittanceCopilotService {
     private final ToolCallbackProvider mcpClientToolCallbacks;
     private final SanctionsScreeningService sanctionsScreeningService;
     private final TransferDecisionRepository transferDecisionRepository;
+    private final PiiRedactor piiRedactor;
 
     public RemittanceCopilotService(ChatClient chatClient, ChatMemory chatMemory,
                                     ExchangeRateTool exchangeRateTool, CountryDataTool countryDataTool,
                                     Advisor complianceRetrievalAdvisor,
                                     @Qualifier("mcpToolCallbacks") ToolCallbackProvider mcpClientToolCallbacks,
                                     SanctionsScreeningService sanctionsScreeningService,
-                                    TransferDecisionRepository transferDecisionRepository) {
+                                    TransferDecisionRepository transferDecisionRepository, PiiRedactor piiRedactor) {
         this.chatClient = chatClient;
         this.chatMemory = chatMemory;
         this.exchangeRateTool = exchangeRateTool;
@@ -43,6 +44,7 @@ public class RemittanceCopilotService {
         this.mcpClientToolCallbacks = mcpClientToolCallbacks;
         this.sanctionsScreeningService = sanctionsScreeningService;
         this.transferDecisionRepository = transferDecisionRepository;
+        this.piiRedactor = piiRedactor;
     }
 
     /**
@@ -60,7 +62,7 @@ public class RemittanceCopilotService {
      */
     public String chat(String sessionId, String userMessage) {
         return chatClient.prompt()
-                .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor(), complianceRetrievalAdvisor,
+                .advisors(new PromptGuardrailAdvisor(piiRedactor), new RequestTraceIdAdvisor(), complianceRetrievalAdvisor,
                         MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, sessionId))
                 .tools(exchangeRateTool, countryDataTool, mcpClientToolCallbacks)
@@ -113,7 +115,7 @@ public class RemittanceCopilotService {
      */
     public CopilotResponse parse(String userMessage) {
         Transaction transaction = chatClient.prompt()
-                .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor())
+                .advisors(new PromptGuardrailAdvisor(piiRedactor), new RequestTraceIdAdvisor())
                 .system(s -> s.param("currentDate", LocalDate.now().toString()))
                 .user(userMessage)
                 .call()
@@ -137,7 +139,7 @@ public class RemittanceCopilotService {
         RiskAuditReport baseline = RiskAuditReport.evaluate(transaction.sourceAmount(), compliance, screening);
 
         CopilotReply reply = chatClient.prompt()
-                .advisors(new PromptGuardrailAdvisor(), new RequestTraceIdAdvisor(), complianceRetrievalAdvisor)
+                .advisors(new PromptGuardrailAdvisor(piiRedactor), new RequestTraceIdAdvisor(), complianceRetrievalAdvisor)
                 .tools(exchangeRateTool)
                 .system(RATIONALE_PROMPT.formatted(baseline.status(), baseline.riskLevel(),
                         baseline.requiredDocuments(), baseline.rationale(), LocalDate.now()))

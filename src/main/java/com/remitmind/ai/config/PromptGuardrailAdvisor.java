@@ -1,5 +1,6 @@
 package com.remitmind.ai.config;
 
+import com.remitmind.ai.service.PiiRedactor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClientRequest;
@@ -15,6 +16,12 @@ import org.springframework.ai.chat.messages.MessageType;
 public class PromptGuardrailAdvisor implements CallAdvisor {
 
     private static final Logger logger = LoggerFactory.getLogger(PromptGuardrailAdvisor.class);
+
+    private final PiiRedactor piiRedactor;
+
+    public PromptGuardrailAdvisor(PiiRedactor piiRedactor) {
+        this.piiRedactor = piiRedactor;
+    }
 
     @Override
     public String getName() {
@@ -37,7 +44,7 @@ public class PromptGuardrailAdvisor implements CallAdvisor {
         if (!userText.isEmpty()) {
             String lowerText = userText.toLowerCase();
             if (lowerText.contains("ignore all rules") || lowerText.contains("bypass constraints") || lowerText.contains("system rules")) {
-                logger.warn("Security Alert: Prompt injection attempt blocked: '{}'", userText);
+                logger.warn("Security Alert: Prompt injection attempt blocked: '{}'", piiRedactor.redact(userText));
                 throw new SecurityException("Transaction request rejected due to prompt security violation.");
             }
         }
